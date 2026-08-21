@@ -1,0 +1,119 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&family=Newsreader:ital,wght@0,400;0,500;1,400&display=swap");
+@import "tailwindcss";
+
+:root {
+  /* Surfaces */
+  --ankai-bg: #08090b;
+  --ankai-bg-alt: #0b0d10;
+  --ankai-surface: #101318;
+  --ankai-surface-2: #14171d;
+  --ankai-sidebar: #0c0e12;
+
+  /* Text */
+  --ankai-text: #f2f2f0;
+  --ankai-secondary: #9a9ea7;
+  --ankai-muted: #62666f;
+  --ankai-faint: #3f434b;
+
+  /* Borders */
+  --ankai-border: rgba(255, 255, 255, 0.08);
+  --ankai-border-soft: rgba(255, 255, 255, 0.05);
+
+  /* Brand */
+  --ankai-accent: #6f62f0;
+  --ankai-accent-hover: #7f74f4;
+  --ankai-accent-soft: rgba(111, 98, 240, 0.12);
+  --ankai-accent-border: rgba(111, 98, 240, 0.28);
+  --ankai-accent-text: #b1a8ff;
+
+  /* Typography */
+  --font-ui: "Sora", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-serif: "Newsreader", serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--ankai-bg);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--ankai-bg);
+  color: var(--ankai-text);
+
+  font-family: var(--font-body);
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgba(111, 98, 240, 0.3);
+  color: white;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Typography utilities */
+.ankai-display {
+  font-family: var(--font-ui);
+  letter-spacing: -0.03em;
+}
+
+.ankai-serif {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+
+.ankai-body {
+  font-family: var(--font-body);
+}
+
+/* Focus ring, used instead of default browser outline */
+.ankai-focus:focus-visible {
+  outline: 2px solid var(--ankai-accent);
+  outline-offset: 2px;
+}
