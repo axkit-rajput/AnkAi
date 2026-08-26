@@ -1,46 +1,34 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&family=Newsreader:ital,wght@0,400;0,500;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
-  /* Surfaces */
-  --ankai-bg: #08090b;
-  --ankai-bg-alt: #0b0d10;
+  --ankai-bg: #080a0d;
   --ankai-surface: #101318;
-  --ankai-surface-2: #14171d;
-  --ankai-sidebar: #0c0e12;
+  --ankai-surface-2: #15191f;
 
-  /* Text */
-  --ankai-text: #f2f2f0;
+  --ankai-text: #f5f5f3;
   --ankai-secondary: #9a9ea7;
-  --ankai-muted: #62666f;
-  --ankai-faint: #3f434b;
+  --ankai-muted: #666b74;
 
-  /* Borders */
-  --ankai-border: rgba(255, 255, 255, 0.08);
-  --ankai-border-soft: rgba(255, 255, 255, 0.05);
+  --ankai-border: rgba(255, 255, 255, 0.09);
 
-  /* Brand */
-  --ankai-accent: #6f62f0;
-  --ankai-accent-hover: #7f74f4;
-  --ankai-accent-soft: rgba(111, 98, 240, 0.12);
-  --ankai-accent-border: rgba(111, 98, 240, 0.28);
-  --ankai-accent-text: #b1a8ff;
+  --ankai-accent: #8072ff;
+  --ankai-accent-soft: rgba(128, 114, 255, 0.12);
 
-  /* Typography */
-  --font-ui: "Sora", sans-serif;
-  --font-body: "Inter", sans-serif;
-  --font-serif: "Newsreader", serif;
+  --font-ui: "DM Sans", sans-serif;
+  --font-body: "Manrope", sans-serif;
+  --font-display: "Sora", sans-serif;
 }
 
-*,
-*::before,
-*::after {
+* {
   box-sizing: border-box;
 }
 
 html {
-  scroll-behavior: smooth;
   background: var(--ankai-bg);
+  color: var(--ankai-text);
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -54,6 +42,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 
 button,
@@ -67,14 +56,12 @@ button {
 }
 
 ::selection {
-  background: rgba(111, 98, 240, 0.3);
+  background: rgba(128, 114, 255, 0.28);
   color: white;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -86,34 +73,11 @@ button {
   border-radius: 999px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
-}
-
-.no-scrollbar {
-  scrollbar-width: none;
-}
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-
-/* Typography utilities */
 .ankai-display {
   font-family: var(--font-ui);
-  letter-spacing: -0.03em;
-}
-
-.ankai-serif {
-  font-family: var(--font-serif);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.055em;
 }
 
 .ankai-body {
   font-family: var(--font-body);
-}
-
-/* Focus ring, used instead of default browser outline */
-.ankai-focus:focus-visible {
-  outline: 2px solid var(--ankai-accent);
-  outline-offset: 2px;
 }

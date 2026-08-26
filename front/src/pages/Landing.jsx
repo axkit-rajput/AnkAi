@@ -96,7 +96,7 @@ const AgentShowcase = () => {
     },
     Coding: {
       eyebrow: "Development",
-      title: "Build, debug and understand code with AnkAI.",
+      title: "Build, debug and understand the code.",
       items: [
         "Understand unfamiliar code",
         "Find and fix problems",
@@ -150,7 +150,7 @@ const AgentShowcase = () => {
     },
     Auto: {
       eyebrow: "Autonomous workflow",
-      title: "Give AnkAI the goal. Let the agents handle the work.",
+      title: "Let the agents handle the work.",
       items: [
         "Understand the objective",
         "Choose the right agents",
@@ -169,9 +169,12 @@ const AgentShowcase = () => {
       id="capabilities"
       className="relative isolate h-[600vh] bg-[#080a0d]"
     >
-      {/* The sticky stage is deliberately the full viewport.
-          The parent supplies the scroll distance; this panel does not move. */}
-      <div className="sticky top-[88px] z-10 flex h-[calc(100vh-88px)] w-full items-center overflow-hidden px-5 sm:px-8 lg:px-12">
+      {/*
+        The showcase intentionally contains ONLY the workspace preview.
+        There is no second story/workspace column, so changing browser zoom
+        never causes the left content to jump above the preview.
+      */}
+      <div className="sticky top-[88px] z-10 flex h-[calc(100vh-88px)] w-full items-center justify-center overflow-hidden px-3 sm:px-6 lg:px-10">
         <div className="pointer-events-none absolute inset-0">
           <motion.div
             animate={{
@@ -183,318 +186,196 @@ const AgentShowcase = () => {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute left-[38%] top-[25%] h-[520px] w-[520px] rounded-full bg-[#665cff]/10 blur-[150px]"
+            className="absolute left-1/2 top-[25%] h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#665cff]/10 blur-[150px]"
           />
 
           <div className="absolute inset-x-0 top-0 h-px bg-white/[0.06]" />
         </div>
 
-        {/* UPDATED: wider container + more space for left section */}
-        <div className="relative mx-auto grid w-full max-w-[1600px] items-center gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-16">
-
-          {/* LEFT STORY */}
-          <div className="relative z-20">
-            <div className="mb-7 flex items-center gap-3">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#8174ff]" />
-
-              <span className="text-[11px] font-medium uppercase tracking-[0.28em] text-[#8174ff]">
-                THE ANKAI WORKSPACE
-              </span>
-            </div>
-
-            <div className="relative min-h-[390px]">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={agent.name}
-                  initial={{
-                    opacity: 0,
-                    y: 32,
-                    filter: "blur(8px)",
-                  }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                    filter: "blur(0px)",
-                  }}
-                  exit={{
-                    opacity: 0,
-                    y: -28,
-                    filter: "blur(8px)",
-                  }}
-                  transition={{
-                    duration: 0.48,
-                    ease: [0.22, 1, 0.36, 1],
-                  }}
-                  className="absolute inset-0"
-                >
-                  <div className="mb-5 flex items-center gap-3 text-white/45">
-                    <AgentIcon
-                      size={19}
-                      strokeWidth={1.5}
-                      className="text-[#8174ff]"
-                    />
-
-                    <span className="text-sm">{agent.name}</span>
-                  </div>
-
-                  {/* UPDATED: smaller left hero heading */}
-                  <h2 className="max-w-[520px] font-['Sora'] text-[46px] font-semibold leading-[0.92] tracking-[-0.05em] text-white xl:text-[60px] 2xl:text-[68px]">
-                    {agent.verb}.
-                    <br />
-
-                    <span className="text-white/[0.28]">
-                      {activeContent.eyebrow}.
-                    </span>
-                  </h2>
-
-                  <p className="mt-8 max-w-[470px] text-[16px] leading-7 text-white/[0.48] sm:text-[17px]">
-                    {activeContent.title}
-                  </p>
-
-                  <div className="mt-9 space-y-2">
-                    {activeContent.items.map((item, index) => (
-                      <motion.div
-                        key={item}
-                        initial={{
-                          opacity: 0,
-                          x: -12,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          x: 0,
-                        }}
-                        transition={{
-                          delay: 0.08 + index * 0.07,
-                          duration: 0.35,
-                        }}
-                        className="flex items-center gap-3 text-[12px] text-white/35"
-                      >
-                        <span className="h-1 w-1 rounded-full bg-[#8174ff]/70" />
-                        {item}
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* Scroll progress */}
-            <div className="mt-3 flex items-center gap-3">
-              <span className="w-5 text-xs tabular-nums text-white/25">
-                {String(active + 1).padStart(2, "0")}
-              </span>
-
-              <div className="flex items-center gap-1.5">
-                {agents.map((item, index) => (
-                  <motion.span
-                    key={item.name}
-                    animate={{
-                      width: index === active ? 30 : 5,
-                      opacity: index === active ? 1 : 0.22,
-                    }}
-                    transition={{
-                      duration: 0.35,
-                      ease: "easeOut",
-                    }}
-                    className="h-1 rounded-full bg-[#8174ff]"
-                  />
-                ))}
-              </div>
-
-              <span className="text-xs tabular-nums text-white/25">
-                08
-              </span>
-            </div>
-          </div>
-
-          {/* PRODUCT PREVIEW */}
-          <div className="relative z-10">
-            <motion.div
-              animate={{
-                y: active % 2 === 0 ? 0 : -7,
-                rotateX: active === 0 ? 0 : -0.5,
-              }}
-              transition={{
-                duration: 0.8,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-
-              className="relative origin-center scale-[0.88] xl:scale-[0.92] 2xl:scale-100"
-            >
-              <div className="overflow-hidden rounded-[26px] border border-white/[0.09] bg-[#101217] shadow-[0_40px_120px_rgba(0,0,0,0.5)]">
-
-                <div className="flex h-[58px] items-center border-b border-white/[0.07] px-5">
-                  <div className="flex gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-                    <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-                  </div>
-
-                  <div className="absolute left-1/2 -translate-x-1/2 text-[10px] font-medium tracking-[0.25em] text-white/20">
-                    ANKAI WORKSPACE
-                  </div>
+        {/* SINGLE RESPONSIVE WORKSPACE */}
+        <div className="relative z-10 flex w-full min-w-0 items-center justify-center">
+          <motion.div
+            animate={{
+              y: active % 2 === 0 ? 0 : -7,
+              rotateX: active === 0 ? 0 : -0.5,
+            }}
+            transition={{
+              duration: 0.8,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="relative w-full max-w-[900px] min-w-0 origin-center"
+          >
+            <div className="w-full min-w-0 overflow-hidden rounded-[20px] border border-white/[0.09] bg-[#101217] shadow-[0_40px_120px_rgba(0,0,0,0.5)] sm:rounded-[26px]">
+              {/* WINDOW BAR */}
+              <div className="relative flex h-[48px] items-center border-b border-white/[0.07] px-4 sm:h-[58px] sm:px-5">
+                <div className="flex gap-1.5 sm:gap-2">
+                  <span className="h-2 w-2 rounded-full bg-white/15 sm:h-2.5 sm:w-2.5" />
+                  <span className="h-2 w-2 rounded-full bg-white/15 sm:h-2.5 sm:w-2.5" />
+                  <span className="h-2 w-2 rounded-full bg-white/15 sm:h-2.5 sm:w-2.5" />
                 </div>
 
-                {/* UPDATED: reduced workspace height + sidebar width */}
-                <div className="grid min-h-[430px] grid-cols-[165px_1fr] xl:grid-cols-[180px_1fr]">
+                <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-[8px] font-medium tracking-[0.2em] text-white/20 sm:text-[10px] sm:tracking-[0.25em]">
+                  ANKAI WORKSPACE
+                </div>
+              </div>
 
-                  {/* UPDATED: reduced sidebar padding */}
-                  <div className="border-r border-white/[0.07] p-4 xl:p-5">
-                    <div className="mb-9 text-lg font-semibold tracking-[-0.03em] text-white/80">
-                      AnkAI
-                    </div>
-
-                    {agents.map((item, index) => {
-                      const Icon = item.icon;
-
-                      return (
-                        <motion.div
-                          key={item.name}
-                          animate={{
-                            backgroundColor:
-                              index === active
-                                ? "rgba(255,255,255,0.075)"
-                                : "rgba(255,255,255,0)",
-                            color:
-                              index === active
-                                ? "rgba(255,255,255,0.9)"
-                                : "rgba(255,255,255,0.3)",
-                          }}
-                          transition={{ duration: 0.3 }}
-                          className="mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px]"
-                        >
-                          <Icon size={15} strokeWidth={1.5} />
-
-                          <span>{item.name}</span>
-
-                          {index === active && (
-                            <motion.span
-                              layoutId="active-agent-dot"
-                              transition={{
-                                type: "spring",
-                                stiffness: 400,
-                                damping: 30,
-                              }}
-                              className="ml-auto h-1.5 w-1.5 rounded-full bg-[#8174ff]"
-                            />
-                          )}
-                        </motion.div>
-                      );
-                    })}
+              <div className="grid min-h-[390px] grid-cols-[clamp(88px,20%,180px)_minmax(0,1fr)] sm:min-h-[430px]">
+                {/* SIDEBAR */}
+                <div className="min-w-0 border-r border-white/[0.07] p-2.5 sm:p-4 lg:p-5">
+                  <div className="mb-5 truncate text-base font-semibold tracking-[-0.03em] text-white/80 sm:mb-9 sm:text-lg">
+                    AnkAI
                   </div>
 
-                  {/* UPDATED: reduced inner preview height */}
-                  <div className="relative min-h-[430px] overflow-hidden">
-                    <AnimatePresence mode="wait" initial={false}>
+                  {agents.map((item, index) => {
+                    const Icon = item.icon;
+
+                    return (
                       <motion.div
-                        key={agent.name}
-                        initial={{
-                          opacity: 0,
-                          y: 35,
-                          scale: 0.985,
-                        }}
+                        key={item.name}
                         animate={{
-                          opacity: 1,
-                          y: 0,
-                          scale: 1,
+                          backgroundColor:
+                            index === active
+                              ? "rgba(255,255,255,0.075)"
+                              : "rgba(255,255,255,0)",
+                          color:
+                            index === active
+                              ? "rgba(255,255,255,0.9)"
+                              : "rgba(255,255,255,0.3)",
                         }}
-                        exit={{
-                          opacity: 0,
-                          y: -35,
-                          scale: 0.985,
-                        }}
-                        transition={{
-                          duration: 0.48,
-                          ease: [0.22, 1, 0.36, 1],
-                        }}
-                        className="absolute inset-0 p-7 sm:p-9"
+                        transition={{ duration: 0.3 }}
+                        className="mb-1 flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-2 text-[10px] sm:gap-3 sm:rounded-xl sm:px-3 sm:py-2.5 sm:text-[13px]"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#8174ff]/10 ring-1 ring-[#8174ff]/10">
-                            <AgentIcon
-                              size={19}
-                              strokeWidth={1.5}
-                              className="text-[#8174ff]"
-                            />
-                          </div>
+                        <Icon
+                          size={13}
+                          strokeWidth={1.5}
+                          className="shrink-0 sm:h-[15px] sm:w-[15px]"
+                        />
 
-                          <div>
-                            <div className="text-sm text-white/70">
-                              {agent.name}
-                            </div>
+                        <span className="min-w-0 truncate">{item.name}</span>
 
-                            <div className="text-[11px] text-white/25">
-                              AnkAI agent
-                            </div>
-                          </div>
-                        </div>
+                        {index === active && (
+                          <motion.span
+                            layoutId="active-agent-dot"
+                            transition={{
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 30,
+                            }}
+                            className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-[#8174ff]"
+                          />
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
 
-                        {/* UPDATED: smaller preview heading */}
-                        <h3 className="mt-8 max-w-[520px] text-[24px] leading-[1.15] tracking-[-0.03em] text-white/90 xl:text-[30px]">
-                          {activeContent.title}
-                        </h3>
-
-                        <div className="mt-9 space-y-2.5">
-                          {activeContent.items.map((item, index) => (
-                            <motion.div
-                              key={item}
-                              initial={{
-                                opacity: 0,
-                                x: 16,
-                              }}
-                              animate={{
-                                opacity: 1,
-                                x: 0,
-                              }}
-                              transition={{
-                                delay: 0.1 + index * 0.08,
-                                duration: 0.35,
-                              }}
-                              className="flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3.5"
-                            >
-                              <span className="text-[10px] tabular-nums text-[#8174ff]">
-                                {String(index + 1).padStart(2, "0")}
-                              </span>
-
-                              <span className="text-[13px] text-white/45">
-                                {item}
-                              </span>
-                            </motion.div>
-                          ))}
-                        </div>
-
-                        <div className="absolute bottom-6 left-7 right-7 flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3 sm:left-9 sm:right-9">
-                          <div className="flex items-center gap-2">
-                            <motion.span
-                              animate={{
-                                opacity: [0.35, 1, 0.35],
-                              }}
-                              transition={{
-                                duration: 1.8,
-                                repeat: Infinity,
-                              }}
-                              className="h-1.5 w-1.5 rounded-full bg-[#8174ff]"
-                            />
-
-                            <span className="text-[11px] text-white/30">
-                              {agent.name} agent ready
-                            </span>
-                          </div>
-
-                          <ArrowUpRight
-                            size={15}
-                            className="text-white/20"
+                {/* MAIN WORKSPACE */}
+                <div className="relative min-h-[390px] min-w-0 overflow-hidden sm:min-h-[430px]">
+                  <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                      key={agent.name}
+                      initial={{
+                        opacity: 0,
+                        y: 35,
+                        scale: 0.985,
+                      }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                      }}
+                      exit={{
+                        opacity: 0,
+                        y: -35,
+                        scale: 0.985,
+                      }}
+                      transition={{
+                        duration: 0.48,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                      className="absolute inset-0 flex min-w-0 flex-col overflow-hidden p-4 sm:p-7 lg:p-9"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#8174ff]/10 ring-1 ring-[#8174ff]/10 sm:h-10 sm:w-10 sm:rounded-xl">
+                          <AgentIcon
+                            size={18}
+                            strokeWidth={1.5}
+                            className="text-[#8174ff] sm:h-[19px] sm:w-[19px]"
                           />
                         </div>
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
+
+                        <div className="min-w-0">
+                          <div className="truncate text-sm text-white/70">
+                            {agent.name}
+                          </div>
+
+                          <div className="text-[10px] text-white/25 sm:text-[11px]">
+                            AnkAI agent
+                          </div>
+                        </div>
+                      </div>
+
+                      <h3 className="mt-5 max-w-[520px] text-[clamp(18px,3.2vw,30px)] leading-[1.15] tracking-[-0.03em] text-white/90 sm:mt-8">
+                        {activeContent.title}
+                      </h3>
+
+                      <div className="mt-6 min-w-0 space-y-2 sm:mt-9 sm:space-y-2.5">
+                        {activeContent.items.map((item, index) => (
+                          <motion.div
+                            key={item}
+                            initial={{
+                              opacity: 0,
+                              x: 16,
+                            }}
+                            animate={{
+                              opacity: 1,
+                              x: 0,
+                            }}
+                            
+                            className="flex min-w-0 items-center gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5 sm:gap-4 sm:px-4 sm:py-3.5"
+                          >
+                            <span className="shrink-0 text-[9px] tabular-nums text-[#8174ff] sm:text-[10px]">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+
+                            <span className="min-w-0 break-words text-[11px] leading-5 text-white/45 sm:text-[13px] sm:leading-normal">
+                              {item}
+                            </span>
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      <div className="absolute bottom-4 left-4 right-4 flex min-w-0 items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5 sm:bottom-6 sm:left-7 sm:right-7 sm:px-4 sm:py-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <motion.span
+                            animate={{
+                              opacity: [0.35, 1, 0.35],
+                            }}
+                            transition={{
+                              duration: 1.8,
+                              repeat: Infinity,
+                            }}
+                            className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#8174ff]"
+                          />
+
+                          <span className="truncate text-[10px] text-white/30 sm:text-[11px]">
+                            {agent.name} agent ready
+                          </span>
+                        </div>
+
+                        <ArrowUpRight
+                          size={14}
+                          className="ml-2 shrink-0 text-white/20 sm:h-[15px] sm:w-[15px]"
+                        />
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
               </div>
+            </div>
 
-              <div className="pointer-events-none absolute -inset-10 -z-10 rounded-full bg-[#675cff]/[0.06] blur-[90px]" />
-            </motion.div>
-          </div>
+            <div className="pointer-events-none absolute -inset-8 -z-10 rounded-full bg-[#675cff]/[0.06] blur-[80px] sm:-inset-10 sm:blur-[90px]" />
+          </motion.div>
         </div>
       </div>
     </section>
@@ -511,7 +392,7 @@ const Landing = () => {
   useEffect(() => {
     const agentTimer = setInterval(() => {
       setActiveAgent((value) => (value + 1) % agents.length);
-    }, 3000);
+    }, 1750);
 
     const demoTimer = setInterval(() => {
       setDemoStep((value) => (value + 1) % 4);
@@ -555,7 +436,7 @@ const Landing = () => {
         src="/AnkAi.png"
         alt="AnkAI"
         className="
-          h-28
+          h-22
           w-auto
           -translate-x-16
           object-contain
@@ -569,6 +450,13 @@ const Landing = () => {
     {/* CENTER NAVIGATION */}
     <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-9 md:flex">
 
+     <a
+        href="#capabilities"
+        className="whitespace-nowrap text-[14px] font-medium text-white/50 transition-colors duration-300 hover:text-white"
+      >
+        Capabilities
+      </a>
+      
       <a
         href="#agents"
         className="whitespace-nowrap text-[14px] font-medium text-white/50 transition-colors duration-300 hover:text-white"
@@ -581,20 +469,6 @@ const Landing = () => {
         className="whitespace-nowrap text-[14px] font-medium text-white/50 transition-colors duration-300 hover:text-white"
       >
         Auto
-      </a>
-
-      <a
-        href="#capabilities"
-        className="whitespace-nowrap text-[14px] font-medium text-white/50 transition-colors duration-300 hover:text-white"
-      >
-        Capabilities
-      </a>
-
-      <a
-        href="#product"
-        className="whitespace-nowrap text-[14px] font-medium text-white/50 transition-colors duration-300 hover:text-white"
-      >
-        Product
       </a>
 
       <a
@@ -836,10 +710,14 @@ const Landing = () => {
               </div>
 
               <p className="max-w-[560px] text-[16px] leading-7 text-white/40 lg:pt-10">
-                AnkAI brings specialized agents into one coherent environment.
-                Use the right tool for the job—or let Auto coordinate them for
-                you.
-              </p>
+  <strong>AnkAI brings specialized AI agents into one coherent environment</strong>,
+  making it easier to research, analyze, create, code, and solve complex tasks
+  from a single workspace. Choose the right agent for each task, or let
+  <strong>Auto intelligently coordinate multiple agents</strong> and connect
+  their capabilities into one seamless workflow. Instead of switching between
+  tools and managing every step yourself, <strong>AnkAI helps you focus on the
+  task, the process, and ultimately the result.</strong>
+</p>
             </div>
 
           </div>
@@ -867,10 +745,14 @@ const Landing = () => {
               </div>
 
               <p className="max-w-[560px] text-[16px] leading-7 text-white/40 lg:pt-10">
-                Auto can combine search, documents, vision, coding and creation
-                into one coordinated workflow. You focus on the outcome—not
-                every individual step.
-              </p>
+  Auto combines <strong>search, documents, vision, coding, and creation</strong> into
+  one intelligent, coordinated workflow. It understands your goal, selects the
+  right capabilities, and connects every step seamlessly to turn your ideas
+  into complete results. You don't need to manage individual tools, switch
+  between applications, or figure out what to do next. Simply describe what
+  you want, and Auto handles the process from start to finish.{" "}
+  <strong>You focus on the outcome—not every individual step.</strong>
+</p>
             </div>
 
             <div className="mt-20 grid overflow-hidden rounded-2xl border border-white/[0.08] bg-[#101318] md:grid-cols-2">
