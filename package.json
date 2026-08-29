@@ -1,0 +1,19 @@
+{
+  "name": "ankai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AnkAI monorepo. This root package exists only to boot the gateway, the four services and the frontend together in development - each of those keeps its own package.json and dependencies.",
+  "license": "ISC",
+  "scripts": {
+    "redis": "docker compose -f backend/docker-compose.yml up -d",
+    "redis:stop": "docker compose -f backend/docker-compose.yml down",
+    "dev": "concurrently --names \"gateway,auth,chat,agent,billing,front\" --prefix-colors \"cyan,green,yellow,magenta,blue,gray\" \"npm --prefix backend/gateway run dev\" \"npm --prefix backend/services/auth run dev\" \"npm --prefix backend/services/chat run dev\" \"npm --prefix backend/services/agent run dev\" \"npm --prefix backend/services/billing run dev\" \"npm --prefix front run dev\"",
+    "dev:backend": "concurrently --names \"gateway,auth,chat,agent,billing\" --prefix-colors \"cyan,green,yellow,magenta,blue\" \"npm --prefix backend/gateway run dev\" \"npm --prefix backend/services/auth run dev\" \"npm --prefix backend/services/chat run dev\" \"npm --prefix backend/services/agent run dev\" \"npm --prefix backend/services/billing run dev\"",
+    "dev:front": "npm --prefix front run dev",
+    "lint": "npm --prefix front run lint",
+    "build": "npm --prefix front run build"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.5"
+  }
+}
