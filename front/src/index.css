@@ -1,23 +1,41 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
   --ankai-bg: #080a0d;
   --ankai-surface: #101318;
   --ankai-surface-2: #15191f;
+  --ankai-sidebar: #0c0e13;
 
   --ankai-text: #f5f5f3;
   --ankai-secondary: #9a9ea7;
   --ankai-muted: #666b74;
+  --ankai-faint: #3d424b;
 
   --ankai-border: rgba(255, 255, 255, 0.09);
+  --ankai-border-soft: rgba(255, 255, 255, 0.055);
 
   --ankai-accent: #8072ff;
+  --ankai-accent-hover: #6f62f0;
   --ankai-accent-soft: rgba(128, 114, 255, 0.12);
+  --ankai-accent-border: rgba(128, 114, 255, 0.28);
+  --ankai-accent-text: #a99dff;
 
   --font-ui: "DM Sans", sans-serif;
   --font-body: "Manrope", sans-serif;
   --font-display: "Sora", sans-serif;
+
+  /* Live viewport height. Mobile browsers shrink the visible area when the
+     address bar is showing, so 100vh overflows and pushes the composer off
+     screen; dvh tracks the real height and the vh line is the fallback. */
+  --app-height: 100vh;
+  --app-height: 100dvh;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  color-scheme: dark;
 }
 
 * {
@@ -29,6 +47,8 @@ html {
   color: var(--ankai-text);
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
+  /* Keeps the page from shifting sideways when a scrollbar appears. */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -43,11 +63,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  /* Stops the whole document rubber-banding behind the app shell on iOS. */
+  overscroll-behavior-y: none;
 }
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -55,13 +78,29 @@ button {
   cursor: pointer;
 }
 
+/* Tailwind's preflight already normalises img/svg/video; iframes are not
+   covered and were able to spill out of the artifact preview panel. */
+iframe {
+  display: block;
+  max-width: 100%;
+  border: 0;
+}
+
 ::selection {
   background: rgba(128, 114, 255, 0.28);
   color: white;
 }
 
+/* ---------------------------------------------------------------------------
+   Scrolling
+   Slim, unobtrusive scrollbars plus momentum scrolling on touch. Anchoring and
+   contained overscroll are what keep the chat transcript from jumping around
+   while replies stream in.
+   --------------------------------------------------------------------------- */
+
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -73,6 +112,59 @@ button {
   border-radius: 999px;
 }
 
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Every in-app scroll region: momentum on iOS, no scroll chaining to the page
+   behind it, and browser scroll anchoring so appended content does not shove
+   the current view. */
+.ankai-scroll,
+.no-scrollbar,
+[data-scroll] {
+  overflow-anchor: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* The transcript is the exception: it pins itself to the bottom in JS, so the
+   browser's own anchoring is redundant there and only adds a second thing
+   moving scrollTop. Must stay after the rule above, which sets the same
+   property at the same specificity. */
+.ankai-transcript {
+  overflow-anchor: none;
+}
+
+/* Honour the OS "reduce motion" setting - smooth scrolling and long transitions
+   are the first thing that becomes unpleasant when motion is unwanted. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Utilities used across components
+   --------------------------------------------------------------------------- */
+
 .ankai-display {
   font-family: var(--font-ui);
   letter-spacing: -0.055em;
@@ -80,4 +172,90 @@ button {
 
 .ankai-body {
   font-family: var(--font-body);
+}
+
+/* The greeting used this class before it existed, so it silently fell back to
+   the body sans. A system serif stack keeps the editorial look without paying
+   for another webfont. */
+.ankai-serif {
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  letter-spacing: -0.02em;
+}
+
+/* Fades out the right edge of the horizontally scrolling agent strip so it is
+   obvious there is more to reach. Phones only: from sm up the whole strip fits,
+   and the mask would just dim the last chip. */
+@media (max-width: 639px) {
+  .ankai-fade-x {
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    -webkit-mask-image: linear-gradient(
+      to right,
+      #000 calc(100% - 28px),
+      transparent
+    );
+  }
+}
+
+/* Message entry. Transform + opacity only: both are compositor properties, so
+   a long transcript does not trigger layout on every append. The reduce-motion
+   block above collapses this to a no-op. */
+@keyframes ankai-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ankai-rise {
+  animation: ankai-rise 0.22s ease-out both;
+}
+
+/* Hides the scrollbar without disabling scrolling - used for the agent strip,
+   file tabs and conversation list. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+/* A visible focus ring only for keyboard users, so the dark UI stays navigable
+   without outlining every clicked button. */
+.ankai-focus:focus-visible {
+  outline: 2px solid var(--ankai-accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.ankai-focus:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* The app shell tracks the live viewport height instead of 100vh. */
+.ankai-app-shell {
+  height: var(--app-height);
+  max-height: var(--app-height);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+/* Bottom-anchored surfaces (composer, drawers) clear the home indicator. */
+.ankai-safe-bottom {
+  padding-bottom: max(var(--safe-bottom), 0px);
+}
+
+/* Touch targets stay at least 40px on phones, where the desktop 28-32px
+   controls are too small to hit reliably. */
+@media (hover: none) and (pointer: coarse) {
+  .ankai-touch {
+    min-height: 40px;
+    min-width: 40px;
+  }
 }
