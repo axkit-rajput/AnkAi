@@ -1,14 +1,22 @@
 import { getModel } from "../config/llmModels.js"
 import axios from "axios"
 import { uploadToS3 } from "../utils/uploadToS3.js"
-import { getFromS3 } from "../utils/getFromS3.js"
+import {
+    getFromS3,
+    DOWNLOAD_TTL_SECONDS,
+    DOWNLOAD_TTL_LABEL
+} from "../utils/getFromS3.js"
 import { deductCredits } from "../utils/deductCredits.js"
 import { checkAgentLimit } from "../config/agentLimit.js"
+import { agentFailure, agentSuccess } from "../utils/agentFailure.js"
+
 export const visionAgent=async (state) => {
 
     try {
         await checkAgentLimit(state.userId,"image")
-         const llm=await getModel("image")
+        await deductCredits(state.userId,"vision")
+
+        const llm=await getModel("image")
     const res=await llm.invoke(`
         You are an elite AI image prompt engineer.
 
@@ -39,31 +47,28 @@ const prompt=res.content.trim()
 
 const imageUrl=`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`
 
-const imageRes=await axios.get(imageUrl,{responseType:"arraybuffer"})
-await deductCredits(state.userId,"vision")
+/* Image generation is slow; without a timeout a stalled upstream holds the
+   request open until the client gives up. */
+const imageRes=await axios.get(imageUrl,{
+    responseType:"arraybuffer",
+    timeout:120000
+})
+
 const buffer=Buffer.from(imageRes.data)
 const filename=`image-${Date.now()}.png`
 
 await uploadToS3(filename,buffer,"image/png")
-const downloadUrl=await getFromS3(filename,24*60)
+const downloadUrl=await getFromS3(filename,DOWNLOAD_TTL_SECONDS)
 
-return {
-    ...state,
+return agentSuccess(state,{
     aiResponse:`
 ![Generated Image](${downloadUrl})
 
 📥 [Download Image](${downloadUrl})
 
-⏳ Link expires in 10 minutes.`
-}
+⏳ Link expires in ${DOWNLOAD_TTL_LABEL}.`
+})
     } catch (error) {
-       console.log(error)
-         return {
-            ...state,
-            aiResponse:error?.data?.message || "failed to generate image"
-        }
+        return agentFailure(state,error,"Failed to generate the image.")
     }
-   
-
-
 }
