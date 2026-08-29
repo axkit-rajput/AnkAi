@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
-import { ArrowUpRight, Brain, Check, Code2, Eye, FileText,Image as ImageIcon,
+import { ArrowUpRight, Brain, Code2, Eye, FileText,Image as ImageIcon,
          MessageCircle, Presentation, Search, Zap, } from "lucide-react";
 import { useEffect,useRef,useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -62,8 +62,6 @@ const workflow = [
   "Execute the work",
   "Deliver the result",
 ];
-
-const demoAgents = ["Search", "Vision", "PDF"];
 
 const AgentShowcase = () => {
   const sectionRef = useRef(null);
@@ -167,15 +165,20 @@ const AgentShowcase = () => {
     <section
       ref={sectionRef}
       id="capabilities"
-      className="relative isolate h-[600vh] bg-[#080a0d]"
+      className="relative isolate h-[360vh] bg-[#080a0d] sm:h-[600vh]"
     >
       {/*
         The showcase intentionally contains ONLY the workspace preview.
         There is no second story/workspace column, so changing browser zoom
         never causes the left content to jump above the preview.
+
+        The scroll track is shorter on phones: 600vh of swiping to step through
+        eight agents reads as the page being stuck.
       */}
-      <div className="sticky top-[88px] z-10 flex h-[calc(100vh-88px)] w-full items-center justify-center overflow-hidden px-3 sm:px-6 lg:px-10">
+      <div className="sticky top-[88px] z-10 flex h-[calc(100svh-88px)] w-full items-center justify-center overflow-hidden px-3 sm:px-6 lg:px-10">
         <div className="pointer-events-none absolute inset-0">
+          {/* Desktop only: a permanently animating 150px blur is the single
+              most expensive thing on this page for a mobile GPU. */}
           <motion.div
             animate={{
               opacity: [0.08, 0.16, 0.08],
@@ -186,7 +189,7 @@ const AgentShowcase = () => {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute left-1/2 top-[25%] h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#665cff]/10 blur-[150px]"
+            className="absolute left-1/2 top-[25%] hidden h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#665cff]/10 blur-[150px] md:block"
           />
 
           <div className="absolute inset-x-0 top-0 h-px bg-white/[0.06]" />
@@ -387,21 +390,13 @@ const Landing = () => {
   const { userData } = useSelector((state) => state.user);
 
   const [activeAgent, setActiveAgent] = useState(0);
-  const [demoStep, setDemoStep] = useState(0);
 
   useEffect(() => {
     const agentTimer = setInterval(() => {
       setActiveAgent((value) => (value + 1) % agents.length);
     }, 1750);
 
-    const demoTimer = setInterval(() => {
-      setDemoStep((value) => (value + 1) % 4);
-    }, 2400);
-
-    return () => {
-      clearInterval(agentTimer);
-      clearInterval(demoTimer);
-    };
+    return () => clearInterval(agentTimer);
   }, []);
 
   const handleTry = () => {
@@ -412,7 +407,7 @@ const Landing = () => {
   const ActiveIcon = currentAgent.icon;
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#080a0d] text-[#f5f5f3] selection:bg-[#8174ff]/30">
+    <div className="min-h-[100svh] overflow-x-clip bg-[#080a0d] text-[#f5f5f3] selection:bg-[#8174ff]/30">
 
       {/* =========================
           NAVIGATION
@@ -429,20 +424,26 @@ const Landing = () => {
           behavior: "smooth",
         })
       }
-      className="group flex h-full items-center"
+      className="ankai-focus group flex h-full shrink-0 items-center"
       aria-label="AnkAI home"
     >
+      {/* Sized to sit inside the 64px pill. The old 88px logo overflowed the
+          pill and was pulled 64px off the left edge on small screens. */}
       <img
-        src="/AnkAi.png"
+        src="/AnkAi-logo.png"
         alt="AnkAI"
+        width={549}
+        height={176}
+        fetchPriority="high"
+        decoding="async"
         className="
-          h-22
+          h-9
           w-auto
-          -translate-x-16
           object-contain
           transition-transform
           duration-300
           group-hover:scale-[1.02]
+          sm:h-11
         "
       />
     </button>
@@ -503,7 +504,7 @@ const Landing = () => {
 
       <main>
         {/* HERO */}
-        <section className="relative flex min-h-screen items-center overflow-hidden px-5 pb-16 pt-28">
+        <section className="relative flex min-h-[100svh] items-center overflow-hidden px-5 pb-16 pt-24 sm:pt-28">
           {/* Ambient background */}
           <div className="pointer-events-none absolute inset-0">
             <motion.div
