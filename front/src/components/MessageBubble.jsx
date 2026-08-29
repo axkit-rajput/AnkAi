@@ -1,93 +1,98 @@
-import {
-  Check,
-  Copy,
-  ExternalLink,
-  X,
-} from "lucide-react";
-import React, { useState } from "react";
+import { Sparkles, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-function MessageBubble({
-  role,
-  content,
-  images = [],
-}) {
+import CopyLabel from "./CopyLabel";
+import { createMarkdownComponents } from "./markdownComponents";
+
+/* Copy buttons in one message share a single piece of state, so keys are
+   namespaced: a code block is keyed by its own source text, which could
+   otherwise collide with the whole-message key. */
+const MESSAGE_KEY = "message";
+
+const IDLE_COPY = { key: "", status: "idle" };
+
+/* remark plugins are a stable array so react-markdown does not rebuild its
+   processor on every render. */
+const REMARK_PLUGINS = [remarkGfm];
+
+function MessageBubble({ role, content, images = [] }) {
   const isUser = role === "user";
 
   const [lightBox, setLightBox] = useState(null);
-  const [copiedCode, setCopiedCode] = useState("");
+  /* Which copy button was pressed, and how it went. */
+  const [copyState, setCopyState] = useState(IDLE_COPY);
 
-  const safeImages = Array.isArray(images)
-    ? images
-    : [];
+  const safeImages = Array.isArray(images) ? images : [];
 
   const safeContent =
-    typeof content === "string"
-      ? content
-      : content == null
-        ? ""
-        : String(content);
+    typeof content === "string" ? content : content == null ? "" : String(content);
 
-  const copyCode = async (code) => {
+  /*
+   * writeText rejects when the document is not focused or clipboard permission
+   * is denied, so the failure is surfaced in the button rather than swallowed -
+   * a button that silently does nothing reads as broken.
+   */
+  const runCopy = async (key, text) => {
+    let status = "done";
+
     try {
-      await navigator.clipboard.writeText(code);
-
-      setCopiedCode(code);
-
-      setTimeout(() => {
-        setCopiedCode("");
-      }, 2000);
+      await navigator.clipboard.writeText(text);
     } catch (error) {
-      console.error(
-        "Failed to copy code:",
-        error
-      );
+      console.error("Failed to copy:", error);
+      status = "error";
     }
+
+    setCopyState({ key, status });
+
+    setTimeout(() => {
+      setCopyState((prev) => (prev.key === key ? IDLE_COPY : prev));
+    }, 2000);
   };
+
+  const copyStatusFor = (key) =>
+    copyState.key === key ? copyState.status : "idle";
+
+  /* Rebuilt only when the copy state changes, not on every parent render. */
+  const markdownComponents = useMemo(
+    () =>
+      createMarkdownComponents({
+        onCopyCode: (value) => runCopy(value, value),
+        copyStatusFor,
+        onOpenImage: setLightBox,
+      }),
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- runCopy and
+       copyStatusFor are recreated every render by design; the copy state is
+       what the map actually depends on. */
+    [copyState]
+  );
 
   return (
     <>
       <div
-        className={`flex ${
-          isUser
-            ? "justify-end"
-            : "justify-start"
+        className={`ankai-rise group flex flex-col ${
+          isUser ? "items-end" : "items-start"
         }`}
       >
+        {/* Attribution. Only the assistant gets one - on the user's own side the
+            alignment and the filled bubble already say who is talking. */}
+        {!isUser && (
+          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-white/25">
+            <span className="flex h-4 w-4 items-center justify-center rounded-[5px] bg-[var(--ankai-accent-soft)] text-[var(--ankai-accent-text)]">
+              <Sparkles size={9} />
+            </span>
+            AnkAI
+          </div>
+        )}
+
         <div
-          className={`
-            w-fit
-            max-w-[85%]
-            break-words
-            overflow-hidden
-            text-[14.5px]
-            leading-relaxed
-            md:max-w-[65%]
-            ${
-              isUser
-                ? `
-                  rounded-2xl
-                  rounded-tr-sm
-                  border
-                  border-white/[0.07]
-                  bg-[#171a21]
-                  px-5
-                  py-3
-                  text-white/90
-                  shadow-[0_8px_30px_rgba(0,0,0,0.16)]
-                `
-                : `
-                  px-0
-                  py-1
-                  text-white/85
-                `
-            }
-          `}
+          className={`w-fit overflow-hidden break-words text-[14.5px] leading-relaxed ${
+            isUser
+              ? "max-w-[88%] rounded-2xl rounded-tr-sm border border-white/[0.07] bg-[#171a21] px-4 py-3 text-white/90 shadow-[0_8px_30px_rgba(0,0,0,0.16)] sm:px-5 md:max-w-[70%]"
+              : "max-w-full px-0 py-1 text-white/85"
+          }`}
         >
-          {/* Images */}
           {safeImages.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-3">
               {safeImages.map((img, index) => (
@@ -96,335 +101,44 @@ function MessageBubble({
                   src={img}
                   alt=""
                   loading="lazy"
-                  onClick={() =>
-                    setLightBox(img)
-                  }
+                  onClick={() => setLightBox(img)}
                   onError={(event) => {
                     event.currentTarget.remove();
                   }}
-                  className="
-                    h-28
-                    w-40
-                    cursor-zoom-in
-                    rounded-xl
-                    border
-                    border-white/10
-                    object-cover
-                    transition
-                    hover:opacity-90
-                  "
+                  className="h-28 w-40 cursor-zoom-in rounded-xl border border-white/10 object-cover transition hover:opacity-90"
                 />
               ))}
             </div>
           )}
 
-          <Markdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              h1: ({ children }) => (
-                <h1 className="mb-3 mt-5 text-2xl font-bold">
-                  {children}
-                </h1>
-              ),
-
-              h2: ({ children }) => (
-                <h2 className="mb-2 mt-4 text-xl font-semibold">
-                  {children}
-                </h2>
-              ),
-
-              h3: ({ children }) => (
-                <h3 className="mb-2 mt-3 text-lg font-semibold">
-                  {children}
-                </h3>
-              ),
-
-              p: ({ children }) => (
-                <p className="mb-3 whitespace-pre-wrap break-words last:mb-0">
-                  {children}
-                </p>
-              ),
-
-              ul: ({ children }) => (
-                <ul className="my-2 list-disc space-y-1 pl-5">
-                  {children}
-                </ul>
-              ),
-
-              ol: ({ children }) => (
-                <ol className="my-2 list-decimal space-y-1 pl-5">
-                  {children}
-                </ol>
-              ),
-
-              li: ({ children }) => (
-                <li className="break-words">
-                  {children}
-                </li>
-              ),
-
-              blockquote: ({ children }) => (
-                <blockquote className="my-3 border-l-2 border-white/15 pl-4 text-white/50">
-                  {children}
-                </blockquote>
-              ),
-
-              hr: () => (
-                <hr className="my-5 border-white/[0.08]" />
-              ),
-
-              table: ({ children }) => (
-                <div className="my-4 overflow-x-auto">
-                  <table className="min-w-full border border-white/10 text-sm">
-                    {children}
-                  </table>
-                </div>
-              ),
-
-              thead: ({ children }) => (
-                <thead className="bg-white/[0.04]">
-                  {children}
-                </thead>
-              ),
-
-              th: ({ children }) => (
-                <th className="border border-white/10 px-3 py-2 text-left font-medium">
-                  {children}
-                </th>
-              ),
-
-              td: ({ children }) => (
-                <td className="border border-white/10 px-3 py-2">
-                  {children}
-                </td>
-              ),
-
-              a: ({ href, children }) => (
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="
-                    inline-flex
-                    items-center
-                    gap-1
-                    text-[var(--ankai-accent)]
-                    underline
-                    underline-offset-2
-                    transition
-                    hover:opacity-80
-                  "
-                >
-                  {children}
-                  <ExternalLink size={13} />
-                </a>
-              ),
-
-              strong: ({ children }) => (
-                <strong className="font-semibold text-white/90">
-                  {children}
-                </strong>
-              ),
-
-              em: ({ children }) => (
-                <em className="text-white/65">
-                  {children}
-                </em>
-              ),
-
-              code: ({
-                className,
-                children,
-              }) => {
-                const value = String(
-                  children
-                ).replace(/\n$/, "");
-
-                /*
-                 * Inline code
-                 */
-                if (!className) {
-                  return (
-                    <code
-                      className="
-                        rounded-md
-                        border
-                        border-white/[0.06]
-                        bg-white/[0.06]
-                        px-1.5
-                        py-0.5
-                        font-mono
-                        text-[12.5px]
-                        text-white/75
-                      "
-                    >
-                      {value}
-                    </code>
-                  );
-                }
-
-                /*
-                 * Code block
-                 */
-                const language =
-                  className.replace(
-                    "language-",
-                    ""
-                  );
-
-                return (
-                  <div
-                    className="
-                      my-4
-                      overflow-hidden
-                      rounded-xl
-                      border
-                      border-[var(--ankai-border)]
-                      bg-[#0d0f13]
-                    "
-                  >
-                    <div
-                      className="
-                        flex
-                        items-center
-                        justify-between
-                        border-b
-                        border-[var(--ankai-border)]
-                        bg-white/[0.025]
-                        px-4
-                        py-2
-                      "
-                    >
-                      <span
-                        className="
-                          text-[10px]
-                          font-medium
-                          uppercase
-                          tracking-[0.12em]
-                          text-white/30
-                        "
-                      >
-                        {language || "code"}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          copyCode(value)
-                        }
-                        className="
-                          flex
-                          items-center
-                          gap-1.5
-                          text-[11px]
-                          text-white/40
-                          transition
-                          hover:text-white/80
-                        "
-                      >
-                        {copiedCode === value ? (
-                          <>
-                            <Check size={14} />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy size={14} />
-                            Copy
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <SyntaxHighlighter
-                      language={
-                        language || "text"
-                      }
-                      style={oneDark}
-                      wrapLongLines
-                      showLineNumbers
-                      customStyle={{
-                        margin: 0,
-                        padding: "16px",
-                        background: "#0d1117",
-                        fontSize: "13px",
-                        lineHeight: "1.6",
-                      }}
-                    >
-                      {value}
-                    </SyntaxHighlighter>
-                  </div>
-                );
-              },
-
-              img: ({ src, alt }) => {
-                if (!src) return null;
-
-                return (
-                  <img
-                    src={src}
-                    alt={alt || ""}
-                    loading="lazy"
-                    onClick={() =>
-                      setLightBox(src)
-                    }
-                    onError={(event) => {
-                      event.currentTarget.remove();
-                    }}
-                    className="
-                      my-3
-                      max-h-[420px]
-                      max-w-full
-                      cursor-zoom-in
-                      rounded-xl
-                      border
-                      border-white/10
-                      object-contain
-                      transition
-                      hover:opacity-90
-                    "
-                  />
-                );
-              },
-            }}
-          >
+          <Markdown remarkPlugins={REMARK_PLUGINS} components={markdownComponents}>
             {safeContent}
           </Markdown>
         </div>
+
+        {/* Whole-message copy. Revealed on hover where there is a pointer and
+            permanently visible on touch, which has no hover to reveal it. */}
+        {!isUser && safeContent && (
+          <button
+            type="button"
+            onClick={() => runCopy(MESSAGE_KEY, safeContent)}
+            className="ankai-focus mt-1.5 flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-[11.5px] text-white/30 transition hover:bg-white/[0.05] hover:text-white/70 focus-visible:opacity-100 group-hover:opacity-100 sm:opacity-0"
+          >
+            <CopyLabel status={copyStatusFor(MESSAGE_KEY)} />
+          </button>
+        )}
       </div>
 
       {/* Image lightbox */}
       {lightBox && (
         <div
-          className="
-            fixed
-            inset-0
-            z-50
-            flex
-            items-center
-            justify-center
-            bg-black/80
-            p-6
-            backdrop-blur-sm
-          "
-          onClick={() =>
-            setLightBox(null)
-          }
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
+          onClick={() => setLightBox(null)}
         >
           <button
             type="button"
-            className="
-              absolute
-              right-5
-              top-5
-              rounded-full
-              bg-white/10
-              p-2
-              text-white/80
-              transition
-              hover:bg-white/15
-              hover:text-white
-            "
+            aria-label="Close image"
+            className="ankai-focus absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white/80 transition hover:bg-white/15 hover:text-white"
             onClick={(event) => {
               event.stopPropagation();
               setLightBox(null);
@@ -436,18 +150,8 @@ function MessageBubble({
           <img
             src={lightBox}
             alt=""
-            onClick={(event) =>
-              event.stopPropagation()
-            }
-            className="
-              max-h-[85vh]
-              max-w-[90vw]
-              rounded-2xl
-              border
-              border-white/10
-              object-contain
-              shadow-2xl
-            "
+            onClick={(event) => event.stopPropagation()}
+            className="max-h-[85dvh] max-w-[90vw] rounded-2xl border border-white/10 object-contain shadow-2xl"
           />
         </div>
       )}
