@@ -1,12 +1,25 @@
-
 import { HumanMessage, SystemMessage } from "@langchain/core/messages"
 import { getModel } from "../config/llmModels.js"
 import fs from "fs/promises"
 import { deductCredits } from "../utils/deductCredits.js"
 import { checkAgentLimit } from "../config/agentLimit.js"
-export const imageAnalyzer =async (state) => {
-     await checkAgentLimit(state.userId,"image")
+import { agentFailure, agentSuccess } from "../utils/agentFailure.js"
+
+export const imageAnalyzer = async (state) => {
+    /* checkAgentLimit used to run outside the try. A 429 escaped as an
+       unhandled rejection, so the caller saw a generic 500 and the temp upload
+       was never cleaned up. */
     try {
+        if (!state.file?.path) {
+            const error = new Error("No image was uploaded.")
+            error.status = 400
+            error.data = { message: "Attach an image to analyze." }
+            throw error
+        }
+
+        await checkAgentLimit(state.userId, "image")
+        await deductCredits(state.userId, "vision")
+
         const llm = await getModel("imageAnalyzer")
 
         const imageBuffer = await fs.readFile(state.file.path)
@@ -47,21 +60,12 @@ Rules:
         ]
 
 const response=await llm.invoke(messages)
- await deductCredits(state.userId,"vision")
-return {
-    ...state,
+
+return agentSuccess(state,{
     aiResponse:response.content
-}
+})
 
     } catch (error) {
-       console.log(error)
-         return {
-            ...state,
-            aiResponse:error?.data?.message || "failed to analyze image"
-        
-}
-    }
-    finally{
-      await fs.unlink(state.file.path)
+       return agentFailure(state,error,"Failed to analyze the image.")
     }
 }
