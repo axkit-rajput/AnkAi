@@ -1,9 +1,12 @@
-import React from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, Crown, X, Zap } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { createOrder } from "../features/createOrder";
 import { verifyPayment } from "../features/verifyPayment";
+import getCurrentUser from "../features/getCurrentUser";
+import { getErrorMessage } from "../features/errorMessage";
+import { setUserdata } from "../redux/userSlice";
 
 const PLANS = [
   {
@@ -25,37 +28,113 @@ const PLANS = [
 
 function BillingDrawer({ open, onClose }) {
   const { userData } = useSelector((state) => state.user);
+  const dispatch = useDispatch();
+
+  const [pendingPlan, setPendingPlan] = useState(null);
+  const [status, setStatus] = useState(null);
+
+  /* Pull the new balance from the server rather than guessing it locally, so
+     the sidebar reflects what was actually credited. */
+  const refreshUser = async () => {
+    const data = await getCurrentUser();
+    if (data) dispatch(setUserdata(data));
+  };
 
   const handleUpgrade = async (plan) => {
+    if (pendingPlan) return;
+
+    setPendingPlan(plan);
+    setStatus(null);
+
     try {
+      /* The checkout script is loaded from index.html; if it was blocked,
+         `new window.Razorpay` throws a bare TypeError that used to be
+         swallowed, leaving the button looking broken. */
+      if (typeof window.Razorpay !== "function") {
+        setStatus({
+          type: "error",
+          message:
+            "Payment checkout could not load. Disable blockers and try again.",
+        });
+        return;
+      }
+
       const data = await createOrder(plan);
+
+      if (!data?.order?.id) {
+        setStatus({
+          type: "error",
+          message: "Could not start checkout. Please try again.",
+        });
+        return;
+      }
+
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: data?.order?.amount,
-        currency: data?.order?.currency,
+        amount: data.order.amount,
+        currency: data.order.currency,
         name: "AnkAI",
-        description: `${data?.plan?.name} Plan`,
-        order_id: data?.order?.id,
+        description: `${data?.plan?.name || plan} Plan`,
+        order_id: data.order.id,
         handler: async (response) => {
           try {
             await verifyPayment(response);
+            await refreshUser();
+            setStatus({
+              type: "success",
+              message: "Payment verified. Your credits have been added.",
+            });
           } catch (error) {
-            console.log(error);
+            console.error("Payment verification failed:", error);
+            setStatus({
+              type: "error",
+              message: getErrorMessage(
+                error,
+                "Payment went through but could not be verified. Please contact support."
+              ),
+            });
+          } finally {
+            setPendingPlan(null);
           }
+        },
+        modal: {
+          /* Without this the button stays disabled forever when the user
+             closes the Razorpay modal. */
+          ondismiss: () => setPendingPlan(null),
         },
         theme: { color: "#6f62f0" },
       };
 
       const razorpay = new window.Razorpay(options);
+
+      razorpay.on("payment.failed", (response) => {
+        setPendingPlan(null);
+        setStatus({
+          type: "error",
+          message:
+            response?.error?.description || "Payment failed. Please try again.",
+        });
+      });
+
       razorpay.open();
+      return;
     } catch (error) {
-      console.log(error);
+      console.error("Upgrade failed:", error);
+      setStatus({
+        type: "error",
+        message: getErrorMessage(error, "Could not start checkout."),
+      });
+      setPendingPlan(null);
+      return;
     }
   };
 
-  const credits = userData?.credits || 0;
+  const credits = userData?.credits ?? 0;
   const totalCredits = userData?.totalCredits || 100;
-  const creditPct = Math.min(100, Math.round((credits / totalCredits) * 100));
+  const creditPct =
+    totalCredits > 0
+      ? Math.max(0, Math.min(100, Math.round((credits / totalCredits) * 100)))
+      : 0;
 
   return (
     <AnimatePresence>
@@ -73,7 +152,7 @@ function BillingDrawer({ open, onClose }) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="fixed right-0 top-0 z-[80] flex h-screen w-[92vw] max-w-[380px] flex-col border-l border-[var(--ankai-border)] bg-[var(--ankai-sidebar)] shadow-2xl"
+            className="ankai-app-shell ankai-safe-bottom fixed right-0 top-0 z-[80] flex w-[92vw] max-w-[380px] flex-col border-l border-[var(--ankai-border)] bg-[var(--ankai-sidebar)] shadow-2xl"
           >
             <div className="flex items-center justify-between border-b border-[var(--ankai-border-soft)] p-5">
               <div>
@@ -122,6 +201,18 @@ function BillingDrawer({ open, onClose }) {
             </div>
 
             <div className="no-scrollbar flex-1 space-y-3 overflow-auto px-5 pb-5">
+              {status && (
+                <div
+                  className={`rounded-lg border px-3 py-2 text-[12px] ${
+                    status.type === "success"
+                      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+                      : "border-red-500/25 bg-red-500/10 text-red-200"
+                  }`}
+                >
+                  {status.message}
+                </div>
+              )}
+
               {PLANS.map((plan) => (
                 <div
                   key={plan.id}
@@ -165,13 +256,14 @@ function BillingDrawer({ open, onClose }) {
 
                   <button
                     onClick={() => handleUpgrade(plan.id)}
-                    className={`ankai-focus mt-4 w-full rounded-lg py-2.5 text-[13px] font-semibold transition ${
+                    disabled={Boolean(pendingPlan)}
+                    className={`ankai-focus mt-4 w-full rounded-lg py-2.5 text-[13px] font-semibold transition disabled:opacity-60 ${
                       plan.featured
                         ? "bg-[var(--ankai-accent)] text-white hover:bg-[var(--ankai-accent-hover)]"
                         : "border border-[var(--ankai-border)] text-white/85 hover:bg-white/[0.06]"
                     }`}
                   >
-                    Upgrade
+                    {pendingPlan === plan.id ? "Opening checkout…" : "Upgrade"}
                   </button>
                 </div>
               ))}
