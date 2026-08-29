@@ -1,15 +1,10 @@
-
-import api from '../../utils/axios'
+import api from "../../utils/axios";
 
 async function getMessages(id) {
-try {
-    const {data}=await api.get(`/api/chat/get-messages/${id}`)
-    console.log(data)
-    return data
-} catch (error) {
-    console.log(error)
-    return []
-}
+  if (!id) return [];
+
+  const { data } = await api.get(`/api/chat/get-messages/${id}`);
+  return Array.isArray(data) ? data : [];
 }
 
-export default getMessages
+export default getMessages;
