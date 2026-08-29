@@ -1,11 +1,14 @@
-import api from "../../utils/axios"
+import api from "../../utils/axios";
 
-export const createConversation=async () => {
-    try {
-        const {data}=await api.get("/api/chat/create-conversation")
-        return data
-    } catch (error) {
-       console.log(error)
-       return []
-    }
-}
+/* Returns the created conversation, or null when the request failed.
+   Callers must handle null - pushing a non-conversation into Redux used to
+   produce sidebar entries with no _id. */
+export const createConversation = async () => {
+  try {
+    const { data } = await api.get("/api/chat/create-conversation");
+    return data?._id ? data : null;
+  } catch (error) {
+    console.error("Failed to create conversation:", error);
+    return null;
+  }
+};
