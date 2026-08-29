@@ -1,13 +1,22 @@
-import React, { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useDispatch } from "react-redux";
 
-import Landing from "./pages/Landing";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-
 import getCurrentUser from "./features/getCurrentUser";
-import { setUserdata } from "./redux/userSlice";
+import { setAuthChecked, setUserdata } from "./redux/userSlice";
+
+/* Split per route: the marketing page ships a large motion-driven scene and the
+   dashboard ships the chat client. Neither should be downloaded to view the
+   other. */
+const Landing = lazy(() => import("./pages/Landing"));
+const Login = lazy(() => import("./pages/Login"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+
+/* A bare tinted panel rather than a spinner: it matches the page background, so
+   a fast chunk load reads as an instant paint instead of a flash. */
+const RouteFallback = () => (
+  <div className="ankai-app-shell w-full bg-[var(--ankai-bg)]" />
+);
 
 function App() {
   const dispatch = useDispatch();
@@ -19,6 +28,9 @@ function App() {
         dispatch(setUserdata(data));
       } catch (error) {
         console.error("Failed to load current user:", error);
+        /* Without this the whole app would sit behind the "checking session"
+           state forever if the probe ever threw. */
+        dispatch(setAuthChecked(true));
       }
     };
 
@@ -27,20 +39,22 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
 
-        <Route path="/" element={<Landing />} />
+          <Route path="/" element={<Landing />} />
 
-        <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<Login />} />
 
-        <Route path="/app" element={<Dashboard />} />
+          <Route path="/app" element={<Dashboard />} />
 
-        <Route
-          path="*"
-          element={<Navigate to="/" replace />}
-        />
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
 
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
