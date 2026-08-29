@@ -1,12 +1,8 @@
-import api from "../../utils/axios"
+import api from "../../utils/axios";
 
-export const createOrder=async (plan) => {
-    try {
-        const {data}=await api.post("/api/billing/create",{plan})
-        console.log(data)
-        return data
-    } catch (error) {
-        console.log(error)
-        return []
-    }
-}
+/* Throws so the billing drawer can tell the user why checkout
+   never opened instead of silently doing nothing. */
+export const createOrder = async (plan) => {
+  const { data } = await api.post("/api/billing/create", { plan });
+  return data;
+};
