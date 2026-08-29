@@ -1,10 +1,14 @@
 import { checkAgentLimit } from "../config/agentLimit.js"
 import { getModel } from "../config/llmModels.js"
 import { deductCredits } from "../utils/deductCredits.js"
+import { agentFailure, agentSuccess } from "../utils/agentFailure.js"
+import { parseJsonResponse } from "../utils/parseJsonResponse.js"
 
 export const codingAgent=async (state) => {
 try {
    await checkAgentLimit(state.userId,"coding")
+   await deductCredits(state.userId,"coding")
+
    const intentLlm=await getModel("intent")
    const llm=await getModel("coding")
    const intentRes=await intentLlm.invoke(`
@@ -23,8 +27,11 @@ DOCUMENTATION
 User Request:
 ${state.prompt}
     `)
-    const intent=intentRes.content
-    if(intent=="CODE_GENERATION"){
+    /* The classifier can answer with punctuation or a full sentence, so match
+       the label instead of requiring an exact string. */
+    const intent=String(intentRes?.content ?? "").toUpperCase()
+
+    if(intent.includes("CODE_GENERATION")){
         const prompt=`
         You are AnkAI Coding Agent.
 
@@ -90,22 +97,32 @@ User Request:
 ${state.prompt}
         ` 
         const res=await llm.invoke(prompt)
-        console.log(res)
-        const data=JSON.parse(res.content)
-        await deductCredits(state.userId,"coding")
-        
-        return {
-            ...state,
+        const data=parseJsonResponse(res.content)
+
+        const files=Array.isArray(data.files)
+            ? data.files.filter(f=>f?.name && typeof f.content==="string")
+            : []
+
+        if(files.length===0){
+            const error=new Error("Model returned no usable files.")
+            error.status=502
+            error.data={message:"No files were generated. Please try again."}
+            throw error
+        }
+
+        return agentSuccess(state,{
             aiResponse:"Code Generated Successfully.",
             artifacts:[
                 {
                     id:Date.now(),
                     type:"Project",
-                    files:data.files || [],
-                    title:state.prompt
+                    files,
+                    /* The artifact header shows this, so keep it short enough
+                       to read instead of pasting the whole prompt. */
+                    title:String(state.prompt||"Project").slice(0,60)
                 }
             ]
-        }
+        })
     }
 
     const res=await llm.invoke(`
@@ -136,21 +153,14 @@ User Request:
 ${state.prompt}
         `)
 
-   const data=res.content   
-   await deductCredits(state.userId,"coding")
-   
-   return {
-    ...state,
+   const data=res.content
+
+   return agentSuccess(state,{
     aiResponse:data,
     artifacts:[]
-   }  
+   })
 } catch (error) {
-   console.log(error)
-         return {
-            ...state,
-            aiResponse:error?.data?.message || "failed to generate code",
-            artifacts:[]
-        }
+   return agentFailure(state,error,"Failed to generate code.",{artifacts:[]})
 }
-  
+
 }
