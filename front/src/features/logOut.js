@@ -1,13 +1,12 @@
-import React from 'react'
-import api from '../../utils/axios'
+import api from "../../utils/axios";
 
 async function logOut() {
-try {
-    const {data}=await api.get("/api/auth/logout")
-    console.log(data)
-} catch (error) {
-    console.log(error)
-}
+  try {
+    await api.get("/api/auth/logout");
+  } catch (error) {
+    /* The local session is cleared either way. */
+    console.error("Logout request failed:", error);
+  }
 }
 
-export default logOut
+export default logOut;
