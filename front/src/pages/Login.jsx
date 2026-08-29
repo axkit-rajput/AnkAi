@@ -1,4 +1,5 @@
 import { signInWithPopup } from "firebase/auth";
+import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -7,33 +8,56 @@ import { useDispatch } from "react-redux";
 import { auth, googleProvider } from "../../utils/firebase";
 import api from "../../utils/axios";
 import { setUserdata } from "../redux/userSlice";
+import { getErrorMessage } from "../features/errorMessage";
 
 const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
+  const [signingIn, setSigningIn] = useState(false);
+  const [error, setError] = useState(null);
+
   const googleLogin = async () => {
+    if (signingIn) return;
+
+    setSigningIn(true);
+    setError(null);
+
     try {
       const result = await signInWithPopup(auth, googleProvider);
 
       const token = await result.user.getIdToken();
 
-      const { data } = await api.post("/api/auth/login", {
-        token,
-      });
+      const { data } = await api.post("/api/auth/login", { token });
+
+      if (!data?.userId) {
+        setError("Sign in failed. Please try again.");
+        return;
+      }
 
       dispatch(setUserdata(data));
 
       navigate("/app");
-    } catch (error) {
-      console.error("Login failed:", error);
+    } catch (err) {
+      /* Dismissing the Google popup is not an error worth showing. */
+      if (
+        err?.code === "auth/popup-closed-by-user" ||
+        err?.code === "auth/cancelled-popup-request"
+      ) {
+        return;
+      }
+
+      console.error("Login failed:", err);
+      setError(getErrorMessage(err, "Sign in failed. Please try again."));
+    } finally {
+      setSigningIn(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0b0d10] text-white">
+    <div className="min-h-[100svh] bg-[#0b0d10] text-white">
 
-      <div className="mx-auto flex min-h-screen max-w-[1380px] flex-col px-6 lg:px-10">
+      <div className="mx-auto flex min-h-[100svh] max-w-[1380px] flex-col px-5 sm:px-6 lg:px-10">
 
         <header className="flex h-[76px] items-center justify-between">
 
@@ -82,12 +106,19 @@ const Login = () => {
 
             <div className="rounded-2xl border border-white/[0.08] bg-[#111419] p-6">
 
+              {error && (
+                <div className="mb-4 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-center text-[12px] text-red-200">
+                  {error}
+                </div>
+              )}
+
               <button
                 onClick={googleLogin}
-                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white py-3 text-[13px] font-medium text-[#111] transition hover:bg-white/90"
+                disabled={signingIn}
+                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white py-3 text-[13px] font-medium text-[#111] transition hover:bg-white/90 disabled:opacity-60"
               >
                 <FcGoogle size={17} />
-                Continue with Google
+                {signingIn ? "Signing in…" : "Continue with Google"}
               </button>
 
               <p className="mt-6 text-center text-[11px] leading-5 text-white/25">
