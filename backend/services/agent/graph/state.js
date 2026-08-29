@@ -10,5 +10,10 @@ export const agentState=Annotation.Root({
     images:Annotation(),
     artifacts:Annotation(),
     userId:Annotation(),
-    file:Annotation()
-})  
+    file:Annotation(),
+    /* Set by an agent when the run did not produce a real answer (rate limit,
+       out of credits, provider error). The controller uses it to avoid writing
+       the error text into conversation history. */
+    failed:Annotation(),
+    failedStatus:Annotation()
+})
