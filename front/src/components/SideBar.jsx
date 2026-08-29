@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Coins,
   LogOut,
@@ -19,11 +19,38 @@ import logOut from "../features/logOut";
 
 import {
   addConversation,
+  resetConversations,
   setConversations,
   setSelectedConversation,
 } from "../redux/conversationSlice";
+import { clearChat, setError } from "../redux/messageSlice";
 import { setUserdata } from "../redux/userSlice";
 import BillingDrawer from "./BillingDrawer";
+
+/* Module scope, not inside SideBar's body: declaring it in render made it a new
+   component type on each pass, so the <img> remounted and re-fetched the avatar. */
+function Avatar({ src, size = 36, onError }) {
+  if (!src) {
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className="flex items-center justify-center rounded-full bg-white/[0.06] text-white/50"
+      >
+        <User size={size * 0.5} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      onError={onError}
+      style={{ width: size, height: size }}
+      className="rounded-full object-cover ring-1 ring-white/10"
+      alt=""
+    />
+  );
+}
 
 function SideBar() {
   const dispatch = useDispatch();
@@ -33,82 +60,103 @@ function SideBar() {
   const [showBilling, setShowBilling] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const { conversations, selectedConversation } = useSelector(
     (state) => state.conversation
   );
+  const { messages } = useSelector((state) => state.message);
   const { userData } = useSelector((state) => state.user);
 
-useEffect(() => {
-  let mounted = true;
+  useEffect(() => {
+    let mounted = true;
 
-  const loadConversations = async () => {
-    if (!userData?._id) return;
+    const loadConversations = async () => {
+      if (!userData?.userId) {
+        dispatch(setConversations([]));
+        return;
+      }
+
+      try {
+        const data = await getConversations();
+        if (mounted) dispatch(setConversations(data));
+      } catch (error) {
+        console.error("Failed to load conversations:", error);
+        if (mounted) dispatch(setConversations([]));
+      }
+    };
+
+    loadConversations();
+
+    return () => {
+      mounted = false;
+    };
+  }, [userData?.userId, dispatch]);
+
+  const handleCreateConversation = async () => {
+    if (creating) return;
+
+    setMobileOpen(false);
+
+    /* An untouched "New Chat" is already an empty thread - reuse it instead of
+       piling up blank conversations every time the button is pressed. */
+    const currentIsUnusedNewChat =
+      selectedConversation &&
+      (!selectedConversation.title ||
+        selectedConversation.title === "New Chat") &&
+      (messages?.length ?? 0) === 0;
+
+    if (currentIsUnusedNewChat) return;
+
+    setCreating(true);
 
     try {
-      const data = await getConversations();
+      /* Clear first so the previous thread is never shown under a new chat. */
+      dispatch(clearChat());
 
-      console.log("Conversations loaded:", data);
+      const data = await createConversation();
 
-      if (!mounted) return;
-
-      // Make sure Redux always receives an array
-      const conversationsData = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.conversations)
-          ? data.conversations
-          : Array.isArray(data?.data)
-            ? data.data
-            : [];
-
-      dispatch(setConversations(conversationsData));
-    } catch (error) {
-      console.error("Failed to load conversations:", error);
-
-      if (mounted) {
-        dispatch(setConversations([]));
+      if (!data?._id) {
+        dispatch(setError("Could not start a new chat. Please try again."));
+        return;
       }
+
+      dispatch(addConversation(data));
+      dispatch(setSelectedConversation(data));
+    } finally {
+      setCreating(false);
     }
   };
 
-  loadConversations();
-
-  return () => {
-    mounted = false;
-  };
-}, [userData?._id, dispatch]);
-  const handleCreateConversation = async () => {
-    const data = await createConversation();
-    dispatch(addConversation(data));
-    dispatch(setSelectedConversation(data));
+  const handleSelectConversation = (conv) => {
     setMobileOpen(false);
+
+    if (conv?._id === selectedConversation?._id) return;
+
+    dispatch(clearChat());
+    dispatch(setSelectedConversation(conv));
+  };
+
+  const handleLogout = async () => {
+    await logOut();
+
+    dispatch(setUserdata(null));
+    dispatch(resetConversations());
+    dispatch(clearChat());
   };
 
   const filteredConversations = conversations.filter((conv) =>
     (conv.title || "New Chat").toLowerCase().includes(search.toLowerCase())
   );
 
-  const credits = userData?.credits || 0;
+  const credits = userData?.credits ?? 0;
   const totalCredits = userData?.totalCredits || 100;
-  const creditPct = Math.min(100, Math.round((credits / totalCredits) * 100));
+  const creditPct =
+    totalCredits > 0
+      ? Math.max(0, Math.min(100, Math.round((credits / totalCredits) * 100)))
+      : 0;
 
-  const Avatar = ({ size = 36 }) =>
-    userData?.avatar && !imageError ? (
-      <img
-        src={userData.avatar}
-        onError={() => setImageError(true)}
-        style={{ width: size, height: size }}
-        className="rounded-full object-cover ring-1 ring-white/10"
-        alt=""
-      />
-    ) : (
-      <div
-        style={{ width: size, height: size }}
-        className="flex items-center justify-center rounded-full bg-white/[0.06] text-white/50"
-      >
-        <User size={size * 0.5} />
-      </div>
-    );
+  const avatarSrc = userData?.avatar && !imageError ? userData.avatar : null;
 
   /* ---------- COLLAPSED (desktop rail) ---------- */
 
@@ -126,8 +174,9 @@ useEffect(() => {
 
           <button
             onClick={handleCreateConversation}
+            disabled={creating}
             title="New chat"
-            className="ankai-focus mt-3 flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.06] hover:text-white"
+            className="ankai-focus mt-3 flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50"
           >
             <Plus size={17} />
           </button>
@@ -138,7 +187,7 @@ useEffect(() => {
               return (
                 <button
                   key={conv._id}
-                  onClick={() => dispatch(setSelectedConversation(conv))}
+                  onClick={() => handleSelectConversation(conv)}
                   title={conv.title || "New Chat"}
                   className={`ankai-focus flex h-9 w-full items-center justify-center rounded-lg transition ${
                     active
@@ -157,7 +206,7 @@ useEffect(() => {
             title="Account"
             className="ankai-focus mt-auto"
           >
-            <Avatar size={32} />
+            <Avatar src={avatarSrc} size={32} onError={() => setImageError(true)} />
           </button>
         </div>
 
@@ -170,10 +219,13 @@ useEffect(() => {
 
   return (
     <>
-      {/* Mobile trigger */}
+      {/* Mobile trigger. Offset from the safe area so it is not under the
+          status bar / notch on phones. */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="ankai-focus fixed left-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--ankai-border)] bg-[var(--ankai-sidebar)]/95 text-white/70 backdrop-blur-xl lg:hidden"
+        aria-label="Open sidebar"
+        className="ankai-focus ankai-touch fixed left-4 z-50 flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--ankai-border)] bg-[var(--ankai-sidebar)]/95 text-white/70 backdrop-blur-xl lg:hidden"
+        style={{ top: "calc(1rem + var(--safe-top))" }}
       >
         <Menu size={18} />
       </button>
@@ -186,13 +238,20 @@ useEffect(() => {
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-50 flex h-full w-[280px] shrink-0 flex-col border-r border-[var(--ankai-border-soft)] bg-[var(--ankai-sidebar)] transition-transform duration-200 lg:static lg:translate-x-0 ${
+        className={`ankai-safe-bottom fixed inset-y-0 left-0 z-50 flex h-full max-h-[var(--app-height)] w-[280px] max-w-[85vw] shrink-0 flex-col border-r border-[var(--ankai-border-soft)] bg-[var(--ankai-sidebar)] transition-transform duration-200 lg:static lg:max-h-none lg:w-[280px] lg:max-w-none lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Brand header */}
         <div className="flex h-14 shrink-0 items-center gap-2 px-3.5">
-          <img src="/AnkAi.png" alt="AnkAI" className="h-16 w-auto" />
+          <img
+            src="/AnkAi-logo.png"
+            alt="AnkAI"
+            width={549}
+            height={176}
+            decoding="async"
+            className="h-9 w-auto object-contain"
+          />
 
           <button
             onClick={() => setMobileOpen(false)}
@@ -214,7 +273,8 @@ useEffect(() => {
         <div className="px-3 pb-1 pt-1">
           <button
             onClick={handleCreateConversation}
-            className="ankai-focus flex w-full items-center gap-2.5 rounded-lg border border-[var(--ankai-border)] px-3 py-2.5 text-[13px] font-medium text-white/85 transition hover:bg-white/[0.05]"
+            disabled={creating}
+            className="ankai-focus flex w-full items-center gap-2.5 rounded-lg border border-[var(--ankai-border)] px-3 py-2.5 text-[13px] font-medium text-white/85 transition hover:bg-white/[0.05] disabled:opacity-50"
           >
             <Plus size={16} className="text-[var(--ankai-accent-text)]" />
             New chat
@@ -246,10 +306,7 @@ useEffect(() => {
             return (
               <button
                 key={conv._id}
-                onClick={() => {
-                  dispatch(setSelectedConversation(conv));
-                  setMobileOpen(false);
-                }}
+                onClick={() => handleSelectConversation(conv)}
                 className={`ankai-focus group mb-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition ${
                   active
                     ? "bg-[var(--ankai-accent-soft)]"
@@ -282,7 +339,7 @@ useEffect(() => {
             onClick={() => setShowBilling(true)}
             className="ankai-focus flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left transition hover:bg-white/[0.05]"
           >
-            <Avatar size={32} />
+            <Avatar src={avatarSrc} size={32} onError={() => setImageError(true)} />
 
             <div className="min-w-0 flex-1">
               <p className="truncate text-[13px] font-medium text-white">
@@ -305,10 +362,7 @@ useEffect(() => {
           </button>
 
           <button
-            onClick={() => {
-              logOut();
-              dispatch(setUserdata(null));
-            }}
+            onClick={handleLogout}
             className="ankai-focus mt-1 flex w-full items-center gap-2.5 rounded-lg p-2 text-left text-[12.5px] text-white/35 transition hover:bg-white/[0.05] hover:text-white/70"
           >
             <LogOut size={14} />
