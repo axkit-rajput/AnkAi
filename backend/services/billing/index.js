@@ -1,3 +1,7 @@
+/* Must be the first import: config modules (redis, s3, tavily) read
+   process.env at module scope, which runs before any dotenv.config() call
+   placed further down this file. */
+import "dotenv/config"
 import express from "express"
 import dotenv from "dotenv"
 import connectDb from "./config/db.js"
