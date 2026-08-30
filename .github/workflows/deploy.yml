@@ -135,5 +135,3 @@ jobs:
           --cluster ${{secrets.ECS_CLUSTER}} \
           --service ${{secrets.BILLING_SERVICE}} \
           --force-new-deployment  
-
-
