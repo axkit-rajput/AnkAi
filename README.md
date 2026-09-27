@@ -1,5 +1,19 @@
 # 🤖 AnkAI — Multi-Agent AI Orchestration Platform
 
+![LangGraph](https://img.shields.io/badge/LangGraph-1.4.7-blue?logo=langchain&logoColor=white)
+![LangChain](https://img.shields.io/badge/LangChain-1.2.2-green?logo=langchain&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-Express_5-339933?logo=node.js&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq-GPT--OSS_120B-orange?logo=groq&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-2.5_Flash-4285F4?logo=googlegemini&logoColor=white)
+![DeepSeek](https://img.shields.io/badge/DeepSeek-V3-8B5CF6)
+![Qdrant](https://img.shields.io/badge/Qdrant-RAG-DC382D)
+![MongoDB](https://img.shields.io/badge/MongoDB-9.7-47A248?logo=mongodb&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-Memory-DC382D?logo=redis&logoColor=white)
+![AWS ECS](https://img.shields.io/badge/Deployed_on-AWS_ECS-FF9900?logo=amazonecs&logoColor=white)
+![Vercel](https://img.shields.io/badge/Frontend-Vercel-000000?logo=vercel&logoColor=white)
+![License](https://img.shields.io/badge/License-ISC-yellowgreen)
+
 A full-stack, production-grade AI platform that orchestrates **8 specialized agents** through a **LangGraph state graph**, enabling intelligent task routing across multiple LLM providers with built-in RAG, document generation, and credit-based billing.
 
 🔗 **[Live Demo](https://ank-ai-gray.vercel.app)** · 📂 **[GitHub](https://github.com/axkit-rajput/AnkAi)**
@@ -360,6 +374,90 @@ AnkAi/
         ├── features/                   # API call functions
         ├── pages/                      # Landing, Login, Dashboard
         └── redux/                      # Store, slices
+```
+
+---
+
+## 🚢 Deployment
+
+### Architecture Overview
+
+```
+┌──────────────┐       push to main        ┌──────────────────────┐
+│   Developer  │  ─────────────────────►    │   GitHub Actions     │
+└──────────────┘                            │   (CI/CD Pipeline)   │
+                                            └──────────┬───────────┘
+                                                       │
+                              ┌─────────────────────────┼─────────────────────────┐
+                              │                         │                         │
+                              ▼                         ▼                         ▼
+                     ┌─────────────────┐     ┌────────────────────┐    ┌──────────────────┐
+                     │  Docker Build   │     │   Push to AWS ECR  │    │  Deploy to ECS   │
+                     │  (5 services)   │────►│   (5 images)       │───►│  (force restart)  │
+                     └─────────────────┘     └────────────────────┘    └──────────────────┘
+
+┌──────────────┐       git push             ┌──────────────────────┐
+│   Frontend   │  ─────────────────────►    │   Vercel (auto)      │
+│   (front/)   │                            │   vite build + CDN   │
+└──────────────┘                            └──────────────────────┘
+```
+
+### Backend — AWS ECS (Dockerized)
+
+Each microservice has its own `Dockerfile` and runs as a separate container on **AWS ECS**:
+
+| Service | Docker Image | Port | ECR Repository |
+|---------|-------------|------|----------------|
+| Gateway | `gateway:latest` | 8000 | `gateway` |
+| Auth | `auth-service:latest` | 8001 | `auth-service` |
+| Chat | `chat-service:latest` | 8002 | `chat-service` |
+| Agent | `agent-service:latest` | 8003 | `agent-service` |
+| Billing | `billing-service:latest` | 8004 | `billing-service` |
+
+**CI/CD Pipeline** (`.github/workflows/deploy.yml`):
+
+1. **Trigger** — Push to `main` branch
+2. **Build** — Docker builds each service from `backend/` context using service-specific Dockerfiles
+3. **Push** — Tags and pushes all 5 images to **AWS ECR**
+4. **Deploy** — Runs `aws ecs update-service --force-new-deployment` for each service on the ECS cluster
+
+```bash
+# Manual Docker build (example for gateway)
+docker build -f backend/gateway/Dockerfile -t gateway backend
+
+# Manual Docker build (example for agent service)
+docker build -f backend/services/agent/Dockerfile -t agent-service backend
+```
+
+### Frontend — Vercel
+
+The React frontend deploys automatically to **Vercel** with:
+- **Build command**: `vite build`
+- **SPA routing**: All routes rewrite to `/index.html` via `vercel.json`
+- **Live URL**: [ank-ai-gray.vercel.app](https://ank-ai-gray.vercel.app)
+
+### Infrastructure Services
+
+| Service | Hosting | Purpose |
+|---------|---------|---------|
+| **MongoDB** | MongoDB Atlas | Persistent data (users, conversations, messages, payments) |
+| **Redis** | AWS ElastiCache / Docker | Sessions, conversation memory, rate limiting |
+| **Qdrant** | Qdrant Cloud | Vector database for RAG |
+| **AWS S3** | AWS | Generated file storage (PDFs, PPTs, images) |
+
+### GitHub Actions Secrets Required
+
+```
+AWS_ACCESS_KEY          # IAM access key
+AWS_SECRET_ACCESS_KEY   # IAM secret key
+AWS_REGION              # e.g. ap-south-1
+AWS_ACCOUNT_ID          # 12-digit AWS account ID
+ECS_CLUSTER             # ECS cluster name
+GATEWAY_SERVICE         # ECS service name for gateway
+AUTH_SERVICE             # ECS service name for auth
+CHAT_SERVICE             # ECS service name for chat
+AGENT_SERVICE            # ECS service name for agent
+BILLING_SERVICE          # ECS service name for billing
 ```
 
 ---
