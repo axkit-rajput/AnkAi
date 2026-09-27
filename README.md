@@ -20,6 +20,14 @@ A full-stack, production-grade AI platform that orchestrates **8 specialized age
 
 ---
 
+## 🏛️ Architecture
+
+<p align="center">
+  <img src="architecture.jpg" alt="AnkAI Architecture Diagram" width="100%"/>
+</p>
+
+---
+
 ## ✨ Features
 
 - 🧠 **8 Specialized AI Agents** — Chat, Search, Coder, PDF, PPT, Vision, RAG, Image Analyzer
